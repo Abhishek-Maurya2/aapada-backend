@@ -1,0 +1,179 @@
+.alert-list {
+    padding: 2rem;
+}
+
+.alert-list .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.alert-list h1 {
+    color: #1e293b;
+    margin: 0;
+}
+
+.alerts-table {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th {
+    text-align: left;
+    padding: 1rem;
+    background: #f8fafc;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+td {
+    padding: 1rem;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: top;
+}
+
+tr:hover {
+    background: #f8fafc;
+}
+
+.title-cell {
+    max-width: 300px;
+}
+
+.title-cell strong {
+    display: block;
+    color: #1e293b;
+}
+
+.message-preview {
+    font-size: 0.875rem;
+    color: #94a3b8;
+    display: block;
+    margin-top: 0.25rem;
+}
+
+.severity-badge,
+.status-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.severity-low {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.severity-medium {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.severity-high {
+    background: #fed7aa;
+    color: #c2410c;
+}
+
+.severity-critical {
+    background: #fecaca;
+    color: #991b1b;
+}
+
+.status-pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-processing {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.status-sent {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status-failed {
+    background: #fecaca;
+    color: #991b1b;
+}
+
+.feedback-cell {
+    text-align: center;
+}
+
+.feedback-count {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #3b82f6;
+}
+
+.feedback-label {
+    font-size: 0.75rem;
+    color: #94a3b8;
+}
+
+.date-cell {
+    white-space: nowrap;
+}
+
+.date-cell .time {
+    display: block;
+    font-size: 0.75rem;
+    color: #94a3b8;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 4rem;
+    background: #fff;
+    border-radius: 12px;
+    color: #64748b;
+}
+
+.empty-state a {
+    color: #3b82f6;
+    font-weight: 600;
+}
+
+.btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background: #3b82f6;
+    color: #fff;
+}
+
+.btn-primary:hover {
+    background: #2563eb;
+}
+
+.loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 50vh;
+    font-size: 1.25rem;
+    color: #64748b;
+}
