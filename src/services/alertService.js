@@ -41,7 +41,7 @@ const processAlert = async (alertId) => {
 
     // Get all active devices
     const devices = await Device.find({ active: true });
-    alert.totalRecipients = devices.length;
+    alert.totalTargetDevices = devices.length;
 
     let successCount = 0;
     let failCount = 0;
@@ -74,7 +74,7 @@ const processAlert = async (alertId) => {
 
     return {
         alertId: alert._id,
-        totalRecipients: devices.length,
+        totalTargetDevices: devices.length,
         successfulDeliveries: successCount,
         failedDeliveries: failCount,
     };

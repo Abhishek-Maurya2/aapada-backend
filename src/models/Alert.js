@@ -15,7 +15,7 @@ const alertSchema = new mongoose.Schema({
         default: 'MEDIUM',
     },
     targetRegion: {
-        type: String, // Can be extended to GeoJSON for geo-fenced alerts
+        type: String,
         default: 'ALL',
     },
     status: {
@@ -23,7 +23,8 @@ const alertSchema = new mongoose.Schema({
         enum: ['PENDING', 'PROCESSING', 'SENT', 'FAILED'],
         default: 'PENDING',
     },
-    totalRecipients: {
+    // Tracking fields
+    totalTargetDevices: {
         type: Number,
         default: 0,
     },
@@ -35,11 +36,34 @@ const alertSchema = new mongoose.Schema({
         type: Number,
         default: 0,
     },
+    // Feedback breakdown by type
+    feedbackBreakdown: {
+        SAFE: { type: Number, default: 0 },
+        MEDICAL: { type: Number, default: 0 },
+        FIRE: { type: Number, default: 0 },
+        HELP: { type: Number, default: 0 },
+        ACKNOWLEDGED: { type: Number, default: 0 },
+    },
     createdBy: {
         type: String,
         default: 'SYSTEM',
     },
     broadcastedAt: Date,
 }, { timestamps: true });
+
+// Virtual for devices that haven't received
+alertSchema.virtual('notReceivedCount').get(function () {
+    return this.totalTargetDevices - this.successfulDeliveries;
+});
+
+// Virtual for total feedback count
+alertSchema.virtual('totalFeedbackCount').get(function () {
+    const fb = this.feedbackBreakdown || {};
+    return (fb.SAFE || 0) + (fb.MEDICAL || 0) + (fb.FIRE || 0) + (fb.HELP || 0) + (fb.ACKNOWLEDGED || 0);
+});
+
+// Ensure virtuals are included in JSON
+alertSchema.set('toJSON', { virtuals: true });
+alertSchema.set('toObject', { virtuals: true });
 
 module.exports = mongoose.model('Alert', alertSchema);

@@ -203,13 +203,32 @@ router.post('/alerts/feedback', async (req, res) => {
             });
         }
 
+        // Check if feedback already exists for this device/alert pair
+        const existingFeedback = await Feedback.findOne({ alertId, deviceId });
+        const feedbackStatus = status || 'ACKNOWLEDGED';
+
+        // If new feedback, increment the feedbackBreakdown on the Alert
+        if (!existingFeedback) {
+            const updateField = `feedbackBreakdown.${feedbackStatus}`;
+            await Alert.findByIdAndUpdate(alertId, {
+                $inc: { [updateField]: 1 }
+            });
+        } else if (existingFeedback.status !== feedbackStatus) {
+            // If updating status, adjust counts
+            const oldField = `feedbackBreakdown.${existingFeedback.status}`;
+            const newField = `feedbackBreakdown.${feedbackStatus}`;
+            await Alert.findByIdAndUpdate(alertId, {
+                $inc: { [oldField]: -1, [newField]: 1 }
+            });
+        }
+
         // Upsert feedback (update if exists, create if not)
         const feedback = await Feedback.findOneAndUpdate(
             { alertId, deviceId },
             {
                 alertId,
                 deviceId,
-                status: status || 'RECEIVED',
+                status: feedbackStatus,
                 receivedAt: new Date(),
                 metadata: metadata || {},
             },
@@ -278,6 +297,53 @@ router.get('/queue/status', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to fetch queue status',
+            error: error.message,
+        });
+    }
+});
+
+// ============== HISTORY ROUTES ==============
+
+/**
+ * Get alerts that a device has responded to (history)
+ * GET /api/v1/alerts/history/:deviceId
+ */
+router.get('/alerts/history/:deviceId', async (req, res) => {
+    try {
+        const { deviceId } = req.params;
+
+        // Find all feedback entries for this device
+        const feedbacks = await Feedback.find({ deviceId }).sort({ receivedAt: -1 });
+
+        // Get the corresponding alerts
+        const alertIds = feedbacks.map(f => f.alertId);
+        const alerts = await Alert.find({ _id: { $in: alertIds } });
+
+        // Combine alert info with the user's response
+        const history = feedbacks.map(feedback => {
+            const alert = alerts.find(a => a._id.toString() === feedback.alertId.toString());
+            return {
+                alertId: feedback.alertId,
+                title: alert?.title || 'Unknown Alert',
+                message: alert?.message || '',
+                severity: alert?.severity || 'MEDIUM',
+                targetRegion: alert?.targetRegion || 'ALL',
+                userResponse: feedback.status,
+                respondedAt: feedback.receivedAt,
+                alertCreatedAt: alert?.createdAt,
+            };
+        });
+
+        res.json({
+            success: true,
+            count: history.length,
+            data: history,
+        });
+    } catch (error) {
+        console.error('History fetch error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch alert history',
             error: error.message,
         });
     }
