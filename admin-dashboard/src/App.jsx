@@ -3,14 +3,13 @@ import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import CreateAlert from './pages/CreateAlert';
 import AlertList from './pages/AlertList';
-import './App.css';
 
 function App() {
   return (
     <BrowserRouter>
-      <div className="app-layout">
+      <div className="flex h-screen bg-background text-foreground">
         <Sidebar />
-        <main className="main-content">
+        <main className="flex-1 overflow-y-auto bg-muted/10">
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/create-alert" element={<CreateAlert />} />
