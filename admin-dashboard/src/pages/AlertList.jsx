@@ -110,7 +110,17 @@ export default function AlertList() {
                                             <div>{alert.title}</div>
                                             <div className="text-xs text-muted-foreground truncate max-w-[200px]">{alert.message}</div>
                                         </TableCell>
-                                        <TableCell>{alert.targetRegion || 'ALL'}</TableCell>
+                                        <TableCell>
+                                            {typeof alert.targetRegion === 'object' && alert.targetRegion?.type === 'Point' ? (
+                                                <div className="text-xs">
+                                                    <div>Lat: {alert.targetRegion.coordinates[1].toFixed(4)}</div>
+                                                    <div>Lon: {alert.targetRegion.coordinates[0].toFixed(4)}</div>
+                                                    <div>Rad: {alert.targetRegion.radius}m</div>
+                                                </div>
+                                            ) : (
+                                                alert.targetRegion || 'ALL'
+                                            )}
+                                        </TableCell>
                                         <TableCell>
                                             <Badge variant={getSeverityVariant(alert.severity)}>
                                                 {alert.severity}

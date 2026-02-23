@@ -93,12 +93,22 @@ router.post('/alerts', async (req, res) => {
             });
         }
 
+        // Handle targetRegion logic (geofencing)
+        let processedTargetRegion = { type: 'ALL', coordinates: null, radius: null };
+        if (targetRegion && targetRegion.type === 'Point' && targetRegion.coordinates && targetRegion.radius) {
+            processedTargetRegion = {
+                type: 'Point',
+                coordinates: targetRegion.coordinates,
+                radius: targetRegion.radius
+            };
+        }
+
         // Create alert in database
         const alert = await Alert.create({
             title,
             message,
             severity: severity || 'MEDIUM',
-            targetRegion: targetRegion || 'ALL',
+            targetRegion: processedTargetRegion,
             createdBy: createdBy || 'SYSTEM',
             status: 'PENDING',
         });

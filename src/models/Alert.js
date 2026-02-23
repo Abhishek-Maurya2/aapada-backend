@@ -15,8 +15,18 @@ const alertSchema = new mongoose.Schema({
         default: 'MEDIUM',
     },
     targetRegion: {
-        type: String,
-        default: 'ALL',
+        type: {
+            type: String, // Can be "ALL" or "Point"
+            default: 'ALL',
+        },
+        coordinates: {
+            type: [Number], // [longitude, latitude]
+            default: null,
+        },
+        radius: {
+            type: Number, // In meters
+            default: null,
+        }
     },
     status: {
         type: String,

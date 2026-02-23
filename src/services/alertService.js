@@ -39,8 +39,31 @@ const processAlert = async (alertId) => {
     alert.status = 'PROCESSING';
     await alert.save();
 
-    // Get all active devices
-    const devices = await Device.find({ active: true });
+    // Determine which devices to target based on alert.targetRegion
+    let devices = [];
+
+    // Check if the targetRegion property has a valid Point and radius defined
+    if (alert.targetRegion && alert.targetRegion.type === 'Point' && alert.targetRegion.coordinates && alert.targetRegion.radius) {
+        devices = await Device.find({
+            active: true,
+            lastLocation: {
+                $near: {
+                    $geometry: {
+                        type: "Point",
+                        // Note: MongoDB expects [longitude, latitude]
+                        coordinates: alert.targetRegion.coordinates
+                    },
+                    $maxDistance: alert.targetRegion.radius // distance in meters
+                }
+            }
+        });
+        console.log(`[ALERT] Targeting ${devices.length} devices within ${alert.targetRegion.radius}m of [${alert.targetRegion.coordinates}]`);
+    } else {
+        // Global alert
+        devices = await Device.find({ active: true });
+        console.log(`[ALERT] Global broadcast targeting all ${devices.length} devices.`);
+    }
+
     alert.totalTargetDevices = devices.length;
 
     let successCount = 0;

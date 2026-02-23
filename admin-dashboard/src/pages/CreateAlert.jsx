@@ -13,7 +13,10 @@ export default function CreateAlert() {
         title: '',
         message: '',
         severity: 'MEDIUM',
-        targetRegion: ''
+        targetRegion: '',
+        latitude: '',
+        longitude: '',
+        radius: ''
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -29,7 +32,24 @@ export default function CreateAlert() {
         setError(null);
 
         try {
-            const response = await api.post('/alerts', formData);
+            // Build the payload
+            let payload = { ...formData };
+            if (formData.latitude && formData.longitude && formData.radius) {
+                payload.targetRegion = {
+                    type: 'Point',
+                    // Note: backend expects [longitude, latitude]
+                    coordinates: [parseFloat(formData.longitude), parseFloat(formData.latitude)],
+                    radius: parseFloat(formData.radius)
+                };
+            } else {
+                payload.targetRegion = formData.targetRegion || 'ALL';
+            }
+            // Remove the helper fields from the final payload
+            delete payload.latitude;
+            delete payload.longitude;
+            delete payload.radius;
+
+            const response = await api.post('/alerts', payload);
             if (response.data.success) {
                 setSuccess(true);
                 setTimeout(() => {
@@ -80,15 +100,53 @@ export default function CreateAlert() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="targetRegion">Location / Region</Label>
+                            <Label htmlFor="targetRegion">Location / Region (Global/Text)</Label>
                             <Input
                                 type="text"
                                 id="targetRegion"
                                 name="targetRegion"
                                 value={formData.targetRegion}
                                 onChange={handleChange}
-                                placeholder="e.g., Zone A, District XYZ"
+                                placeholder="e.g., Zone A, District XYZ (Leave blank if using coordinates below)"
                             />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="latitude">Latitude</Label>
+                                <Input
+                                    type="number"
+                                    step="any"
+                                    id="latitude"
+                                    name="latitude"
+                                    value={formData.latitude}
+                                    onChange={handleChange}
+                                    placeholder="e.g., 28.7041"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="longitude">Longitude</Label>
+                                <Input
+                                    type="number"
+                                    step="any"
+                                    id="longitude"
+                                    name="longitude"
+                                    value={formData.longitude}
+                                    onChange={handleChange}
+                                    placeholder="e.g., 77.1025"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="radius">Radius (meters)</Label>
+                                <Input
+                                    type="number"
+                                    id="radius"
+                                    name="radius"
+                                    value={formData.radius}
+                                    onChange={handleChange}
+                                    placeholder="e.g., 5000"
+                                />
+                            </div>
                         </div>
 
                         <div className="space-y-2">
