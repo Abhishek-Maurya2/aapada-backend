@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import MapPicker from '../components/MapPicker';
 
 export default function CreateAlert() {
     const navigate = useNavigate();
@@ -18,12 +19,22 @@ export default function CreateAlert() {
         longitude: '',
         radius: ''
     });
+    const [useGeofence, setUseGeofence] = useState(true);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(false);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleLocationSelect = (lat, lng, radius) => {
+        setFormData(prev => ({
+            ...prev,
+            latitude: lat !== null ? lat.toString() : '',
+            longitude: lng !== null ? lng.toString() : '',
+            radius: radius !== null ? radius.toString() : '',
+        }));
     };
 
     const handleSubmit = async (e) => {
@@ -67,124 +78,121 @@ export default function CreateAlert() {
         <div className="flex-1 space-y-4 p-8 pt-6">
             <h2 className="text-3xl font-bold tracking-tight">Create Alert</h2>
 
-            <Card className="max-w-2xl">
-                <CardHeader>
-                    <CardTitle>New Alert Details</CardTitle>
-                    <CardDescription>Enter the details of the disaster alert to be broadcasted.</CardDescription>
-                </CardHeader>
-                <form onSubmit={handleSubmit}>
-                    <CardContent className="space-y-4">
-                        {success && (
-                            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert">
-                                <span className="block sm:inline">✅ Alert created and queued for broadcast!</span>
-                            </div>
-                        )}
+            <div className="max-w-4xl space-y-4">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>New Alert Details</CardTitle>
+                        <CardDescription>Enter the details of the disaster alert to be broadcasted.</CardDescription>
+                    </CardHeader>
+                    <form onSubmit={handleSubmit}>
+                        <CardContent className="space-y-4">
+                            {success && (
+                                <div className="bg-green-900/30 border border-green-500/50 text-green-400 px-4 py-3 rounded-lg" role="alert">
+                                    <span className="block sm:inline">✅ Alert created and queued for broadcast!</span>
+                                </div>
+                            )}
 
-                        {error && (
-                            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-                                <span className="block sm:inline">❌ {error}</span>
-                            </div>
-                        )}
+                            {error && (
+                                <div className="bg-red-900/30 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg" role="alert">
+                                    <span className="block sm:inline">❌ {error}</span>
+                                </div>
+                            )}
 
-                        <div className="space-y-2">
-                            <Label htmlFor="title">Alert Title</Label>
-                            <Input
-                                type="text"
-                                id="title"
-                                name="title"
-                                value={formData.title}
-                                onChange={handleChange}
-                                placeholder="e.g., Flood Warning"
-                                required
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="targetRegion">Location / Region (Global/Text)</Label>
-                            <Input
-                                type="text"
-                                id="targetRegion"
-                                name="targetRegion"
-                                value={formData.targetRegion}
-                                onChange={handleChange}
-                                placeholder="e.g., Zone A, District XYZ (Leave blank if using coordinates below)"
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="latitude">Latitude</Label>
+                                <Label htmlFor="title">Alert Title</Label>
                                 <Input
-                                    type="number"
-                                    step="any"
-                                    id="latitude"
-                                    name="latitude"
-                                    value={formData.latitude}
+                                    type="text"
+                                    id="title"
+                                    name="title"
+                                    value={formData.title}
                                     onChange={handleChange}
-                                    placeholder="e.g., 28.7041"
+                                    placeholder="e.g., Flood Warning"
+                                    required
                                 />
                             </div>
+
                             <div className="space-y-2">
-                                <Label htmlFor="longitude">Longitude</Label>
-                                <Input
-                                    type="number"
-                                    step="any"
-                                    id="longitude"
-                                    name="longitude"
-                                    value={formData.longitude}
+                                <Label htmlFor="severity">Severity</Label>
+                                <select
+                                    id="severity"
+                                    name="severity"
+                                    value={formData.severity}
                                     onChange={handleChange}
-                                    placeholder="e.g., 77.1025"
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    <option value="LOW">Low</option>
+                                    <option value="MEDIUM">Medium</option>
+                                    <option value="HIGH">High</option>
+                                    <option value="CRITICAL">Critical</option>
+                                </select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="message">Message</Label>
+                                <Textarea
+                                    id="message"
+                                    name="message"
+                                    value={formData.message}
+                                    onChange={handleChange}
+                                    placeholder="Detailed alert message..."
+                                    rows={5}
+                                    required
                                 />
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="radius">Radius (meters)</Label>
-                                <Input
-                                    type="number"
-                                    id="radius"
-                                    name="radius"
-                                    value={formData.radius}
-                                    onChange={handleChange}
-                                    placeholder="e.g., 5000"
-                                />
+
+                            {/* Geofence Toggle */}
+                            <div className="flex items-center gap-3 pt-2 border-t border-border">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={useGeofence}
+                                        onChange={(e) => {
+                                            setUseGeofence(e.target.checked);
+                                            if (!e.target.checked) {
+                                                handleLocationSelect(null, null, null);
+                                            }
+                                        }}
+                                        className="w-4 h-4 rounded accent-red-500"
+                                    />
+                                    <span className="text-sm font-medium">Target specific area (Geofence)</span>
+                                </label>
+                                {!useGeofence && (
+                                    <span className="text-xs text-muted-foreground">Alert will be sent to ALL devices</span>
+                                )}
                             </div>
-                        </div>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="severity">Severity</Label>
-                            <select
-                                id="severity"
-                                name="severity"
-                                value={formData.severity}
-                                onChange={handleChange}
-                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                <option value="LOW">Low</option>
-                                <option value="MEDIUM">Medium</option>
-                                <option value="HIGH">High</option>
-                                <option value="CRITICAL">Critical</option>
-                            </select>
-                        </div>
+                            {/* Map Picker */}
+                            {useGeofence && (
+                                <MapPicker
+                                    onLocationSelect={handleLocationSelect}
+                                    initialRadius={5000}
+                                    height="350px"
+                                />
+                            )}
 
-                        <div className="space-y-2">
-                            <Label htmlFor="message">Message</Label>
-                            <Textarea
-                                id="message"
-                                name="message"
-                                value={formData.message}
-                                onChange={handleChange}
-                                placeholder="Detailed alert message..."
-                                rows={5}
-                                required
-                            />
-                        </div>
-                    </CardContent>
-                    <CardFooter>
-                        <Button type="submit" disabled={loading} className="w-full sm:w-auto">
-                            {loading ? 'Creating...' : 'Create & Broadcast Alert'}
-                        </Button>
-                    </CardFooter>
-                </form>
-            </Card>
+                            {/* Fallback text region (when geofencing is off) */}
+                            {!useGeofence && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="targetRegion">Target Region (Text)</Label>
+                                    <Input
+                                        type="text"
+                                        id="targetRegion"
+                                        name="targetRegion"
+                                        value={formData.targetRegion}
+                                        onChange={handleChange}
+                                        placeholder="e.g., Zone A, District XYZ (or leave blank for ALL)"
+                                    />
+                                </div>
+                            )}
+                        </CardContent>
+                        <CardFooter>
+                            <Button type="submit" disabled={loading} className="w-full sm:w-auto">
+                                {loading ? 'Creating...' : 'Create & Broadcast Alert'}
+                            </Button>
+                        </CardFooter>
+                    </form>
+                </Card>
+            </div>
         </div>
     );
 }
