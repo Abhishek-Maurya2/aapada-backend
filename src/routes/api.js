@@ -359,4 +359,140 @@ router.get('/alerts/history/:deviceId', async (req, res) => {
     }
 });
 
+// ============== DEVICE LOCATION UPDATE ==============
+
+/**
+ * Update device location
+ * PUT /api/v1/devices/:deviceId/location
+ */
+router.put('/devices/:deviceId/location', async (req, res) => {
+    try {
+        const { deviceId } = req.params;
+        const { latitude, longitude } = req.body;
+
+        if (latitude == null || longitude == null) {
+            return res.status(400).json({
+                success: false,
+                message: 'latitude and longitude are required',
+            });
+        }
+
+        const device = await Device.findOneAndUpdate(
+            { deviceId },
+            {
+                lastLocation: {
+                    type: 'Point',
+                    coordinates: [parseFloat(longitude), parseFloat(latitude)],
+                },
+            },
+            { new: true }
+        );
+
+        if (!device) {
+            return res.status(404).json({
+                success: false,
+                message: 'Device not found',
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Location updated',
+            data: { deviceId, lastLocation: device.lastLocation },
+        });
+    } catch (error) {
+        console.error('Location update error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update location',
+            error: error.message,
+        });
+    }
+});
+
+// ============== DEVICE-AWARE ALERTS ==============
+
+/**
+ * Haversine distance between two points in meters
+ */
+function haversineDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371000; // Earth radius in meters
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
+/**
+ * Get alerts relevant to a specific device (geofence-filtered)
+ * GET /api/v1/alerts/device/:deviceId
+ * 
+ * Returns:
+ * - ALL global alerts (targetRegion.type !== 'Point')
+ * - Geofenced alerts ONLY if device is within the alert's radius
+ */
+router.get('/alerts/device/:deviceId', async (req, res) => {
+    try {
+        const { deviceId } = req.params;
+
+        // Get the device's current location
+        const device = await Device.findOne({ deviceId });
+        if (!device) {
+            return res.status(404).json({
+                success: false,
+                message: 'Device not found',
+            });
+        }
+
+        const deviceCoords = device.lastLocation?.coordinates; // [lng, lat]
+
+        // Fetch all recent alerts
+        const allAlerts = await Alert.find().sort({ createdAt: -1 }).limit(100);
+
+        // Filter: include global alerts + geofenced alerts where device is in range
+        const relevantAlerts = allAlerts.filter(alert => {
+            // Global alert (no geofence) — always include
+            if (
+                !alert.targetRegion ||
+                alert.targetRegion.type !== 'Point' ||
+                !alert.targetRegion.coordinates ||
+                !alert.targetRegion.radius
+            ) {
+                return true;
+            }
+
+            // Geofenced alert — check if device is within radius
+            if (!deviceCoords || (deviceCoords[0] === 0 && deviceCoords[1] === 0)) {
+                // Device has no valid location — exclude geofenced alerts
+                return false;
+            }
+
+            const [alertLng, alertLat] = alert.targetRegion.coordinates;
+            const [deviceLng, deviceLat] = deviceCoords;
+            const distance = haversineDistance(deviceLat, deviceLng, alertLat, alertLng);
+
+            return distance <= alert.targetRegion.radius;
+        });
+
+        res.json({
+            success: true,
+            count: relevantAlerts.length,
+            data: relevantAlerts,
+        });
+    } catch (error) {
+        console.error('Device alerts fetch error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch device alerts',
+            error: error.message,
+        });
+    }
+});
+
 module.exports = router;
