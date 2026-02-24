@@ -196,6 +196,37 @@ router.get('/alerts/:id', async (req, res) => {
     }
 });
 
+/**
+ * Delete an alert and its feedback
+ * DELETE /api/v1/alerts/:id
+ */
+router.delete('/alerts/:id', async (req, res) => {
+    try {
+        const alert = await Alert.findByIdAndDelete(req.params.id);
+        if (!alert) {
+            return res.status(404).json({
+                success: false,
+                message: 'Alert not found',
+            });
+        }
+
+        // Also delete all feedback for this alert
+        await Feedback.deleteMany({ alertId: req.params.id });
+
+        res.json({
+            success: true,
+            message: 'Alert deleted successfully',
+        });
+    } catch (error) {
+        console.error('Alert deletion error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to delete alert',
+            error: error.message,
+        });
+    }
+});
+
 // ============== FEEDBACK ROUTES ==============
 
 /**

@@ -5,11 +5,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 
 export default function AlertList() {
     const [alerts, setAlerts] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [deleting, setDeleting] = useState(null);
 
     useEffect(() => {
         fetchAlerts();
@@ -50,6 +51,24 @@ export default function AlertList() {
             CRITICAL: 'destructive'
         };
         return map[severity] || 'default';
+    };
+
+    const deleteAlert = async (alertId, title) => {
+        if (!window.confirm(`Delete alert "${title}"?\n\nThis will also delete all feedback for this alert. This action cannot be undone.`)) {
+            return;
+        }
+        setDeleting(alertId);
+        try {
+            const response = await api.delete(`/alerts/${alertId}`);
+            if (response.data.success) {
+                setAlerts(prev => prev.filter(a => a._id !== alertId));
+            }
+        } catch (err) {
+            console.error('Failed to delete alert:', err);
+            alert('Failed to delete alert: ' + (err.response?.data?.message || err.message));
+        } finally {
+            setDeleting(null);
+        }
     };
 
     const getStatusVariant = (status) => {
@@ -101,6 +120,7 @@ export default function AlertList() {
                                     <TableHead>Status</TableHead>
                                     <TableHead>Feedback</TableHead>
                                     <TableHead>Created</TableHead>
+                                    <TableHead className="w-[60px]"></TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -142,6 +162,16 @@ export default function AlertList() {
                                                 <span>{new Date(alert.createdAt).toLocaleDateString()}</span>
                                                 <span className="text-xs text-muted-foreground">{new Date(alert.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                             </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <button
+                                                onClick={() => deleteAlert(alert._id, alert.title)}
+                                                disabled={deleting === alert._id}
+                                                className="p-1.5 rounded-md text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                                                title="Delete alert"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
                                         </TableCell>
                                     </TableRow>
                                 ))}
