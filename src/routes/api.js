@@ -3,7 +3,7 @@ const router = express.Router();
 const Device = require('../models/Device');
 const Alert = require('../models/Alert');
 const Feedback = require('../models/Feedback');
-const { addAlertToQueue, alertQueue } = require('../services/queue');
+const { addAlertToQueue, alertQueue, getQueueStatus } = require('../services/queue');
 
 // Health check
 router.get('/health', (req, res) => {
@@ -371,19 +371,11 @@ router.get('/alerts/:id/feedback', async (req, res) => {
  */
 router.get('/queue/status', async (req, res) => {
     try {
-        const waiting = await alertQueue.getWaitingCount();
-        const active = await alertQueue.getActiveCount();
-        const completed = await alertQueue.getCompletedCount();
-        const failed = await alertQueue.getFailedCount();
+        const status = await getQueueStatus();
 
         res.json({
             success: true,
-            data: {
-                waiting,
-                active,
-                completed,
-                failed,
-            },
+            data: status,
         });
     } catch (error) {
         res.status(500).json({

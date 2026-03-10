@@ -40,20 +40,29 @@ export default function Dashboard() {
 
     const fetchStats = async () => {
         try {
-            const [devicesRes, alertsRes, queueRes] = await Promise.all([
+            // Use allSettled so a Redis/queue timeout doesn't break the whole dashboard
+            const [devicesResult, alertsResult, queueResult] = await Promise.allSettled([
                 api.get('/devices'),
                 api.get('/alerts'),
                 api.get('/queue/status')
             ]);
 
-            const alerts = alertsRes.data.data || [];
+            const devicesData = devicesResult.status === 'fulfilled' ? devicesResult.value.data : null;
+            const alertsData = alertsResult.status === 'fulfilled' ? alertsResult.value.data : null;
+            const queueData = queueResult.status === 'fulfilled' ? queueResult.value.data : null;
+
+            if (queueResult.status === 'rejected') {
+                console.warn('Queue status unavailable (Redis may be down):', queueResult.reason?.message);
+            }
+
+            const alerts = alertsData?.data || [];
             const pendingAlerts = alerts.filter(a => a.status === 'PENDING').length;
 
             setStats({
-                devices: devicesRes.data.count || 0,
-                alerts: alertsRes.data.count || 0,
+                devices: devicesData?.count ?? 0,
+                alerts: alertsData?.count ?? 0,
                 pending: pendingAlerts,
-                queueStatus: queueRes.data.data || { waiting: 0, active: 0, completed: 0, failed: 0 }
+                queueStatus: queueData?.data || { waiting: 0, active: 0, completed: 0, failed: 0 }
             });
 
             // Filter alerts that have geofence coordinates
