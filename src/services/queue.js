@@ -3,7 +3,7 @@ const Queue = require('bull');
 // Determine Redis connection
 // Render provides REDIS_URL (or REDIS_INTERNAL_URL for internal communication)
 const redisConfig = process.env.REDIS_URL
-    ? process.env.REDIS_URL
+    ? process.env.REDIS_URL.replace('redis://', 'rediss://') // Force TLS for Upstash
     : {
         host: process.env.REDIS_HOST || 'localhost',
         port: parseInt(process.env.REDIS_PORT) || 6379,
