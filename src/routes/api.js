@@ -13,12 +13,55 @@ router.get('/health', (req, res) => {
 // ============== DEVICE ROUTES ==============
 
 /**
+ * Update device profile
+ * PUT /api/v1/devices/:deviceId/profile
+ */
+router.put('/devices/:deviceId/profile', async (req, res) => {
+    try {
+        const { deviceId } = req.params;
+        const { name, email, phone, profilePhoto } = req.body;
+
+        const updateData = {};
+        if (name !== undefined) updateData.name = name;
+        if (email !== undefined) updateData.email = email;
+        if (phone !== undefined) updateData.phone = phone;
+        if (profilePhoto !== undefined) updateData.profilePhoto = profilePhoto;
+
+        const device = await Device.findOneAndUpdate(
+            { deviceId },
+            updateData,
+            { new: true }
+        );
+
+        if (!device) {
+            return res.status(404).json({
+                success: false,
+                message: 'Device not found',
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Profile updated successfully',
+            data: device,
+        });
+    } catch (error) {
+        console.error('Profile update error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update profile',
+            error: error.message,
+        });
+    }
+});
+
+/**
  * Register a new device
  * POST /api/v1/devices/register
  */
 router.post('/devices/register', async (req, res) => {
     try {
-        const { deviceId, fcmToken, platform, location } = req.body;
+        const { deviceId, fcmToken, platform, location, name, email, phone, profilePhoto } = req.body;
 
         if (!deviceId || !fcmToken) {
             return res.status(400).json({
@@ -27,16 +70,24 @@ router.post('/devices/register', async (req, res) => {
             });
         }
 
+        // Collect update fields
+        const updateData = {
+            deviceId,
+            fcmToken,
+            platform: platform || 'android',
+            active: true,
+        };
+
+        if (location) updateData.lastLocation = location;
+        if (name !== undefined) updateData.name = name;
+        if (email !== undefined) updateData.email = email;
+        if (phone !== undefined) updateData.phone = phone;
+        if (profilePhoto !== undefined) updateData.profilePhoto = profilePhoto;
+
         // Upsert device (update if exists, create if not)
         const device = await Device.findOneAndUpdate(
             { deviceId },
-            {
-                deviceId,
-                fcmToken,
-                platform: platform || 'android',
-                lastLocation: location || { type: 'Point', coordinates: [0, 0] },
-                active: true,
-            },
+            updateData,
             { upsert: true, new: true }
         );
 

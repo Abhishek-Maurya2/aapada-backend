@@ -65,3 +65,17 @@ backend/
 ├── .env
 └── package.json
 ```
+
+## Deployment to Netlify
+
+This project is configured to run on Netlify Functions.
+
+### Requirements
+- **MONGODB_URI**: Setting this environment variable in the Netlify Dashboard is mandatory.
+- **Background Workers**: BullMQ and Redis-related background tasks won't run continuously on Netlify. A persistent server or a cloud-based Redis/worker setup is required for that part.
+
+### Steps to Deploy
+1. Install Netlify CLI: `npm install -g netlify-cli`
+2. Login: `netlify login`
+3. Run `netlify init` or `netlify deploy`
+

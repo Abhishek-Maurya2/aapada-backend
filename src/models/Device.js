@@ -31,6 +31,21 @@ const deviceSchema = new mongoose.Schema({
         type: Boolean,
         default: true,
     },
+    name: {
+        type: String,
+        trim: true,
+    },
+    email: {
+        type: String,
+        trim: true,
+    },
+    phone: {
+        type: String,
+        trim: true,
+    },
+    profilePhoto: {
+        type: String, // Can store base64 or URL
+    },
 }, { timestamps: true });
 
 // Geospatial index for location-based queries
