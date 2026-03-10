@@ -135,7 +135,7 @@ router.get('/devices', async (req, res) => {
  */
 router.post('/alerts', async (req, res) => {
     try {
-        const { title, message, severity, targetRegion, createdBy } = req.body;
+        const { title, message, severity, alertType, flag, expiresIn, additionalInfo, targetRegion, createdBy } = req.body;
 
         if (!title || !message) {
             return res.status(400).json({
@@ -154,11 +154,21 @@ router.post('/alerts', async (req, res) => {
             };
         }
 
+        // Calculate expiresAt from expiresIn (in hours)
+        let expiresAt = null;
+        if (expiresIn && Number(expiresIn) > 0) {
+            expiresAt = new Date(Date.now() + Number(expiresIn) * 60 * 60 * 1000);
+        }
+
         // Create alert in database
         const alert = await Alert.create({
             title,
             message,
             severity: severity || 'MEDIUM',
+            alertType: alertType || 'Other',
+            flag: flag || 'YELLOW',
+            expiresAt,
+            additionalInfo: additionalInfo || '',
             targetRegion: processedTargetRegion,
             createdBy: createdBy || 'SYSTEM',
             status: 'PENDING',
@@ -191,7 +201,18 @@ router.post('/alerts', async (req, res) => {
  */
 router.get('/alerts', async (req, res) => {
     try {
-        const alerts = await Alert.find().sort({ createdAt: -1 }).limit(100);
+        const { includeExpired } = req.query;
+
+        // Build query: exclude expired alerts unless explicitly requested
+        const query = {};
+        if (includeExpired !== 'true') {
+            query.$or = [
+                { expiresAt: null },
+                { expiresAt: { $gt: new Date() } },
+            ];
+        }
+
+        const alerts = await Alert.find(query).sort({ createdAt: -1 }).limit(100);
         res.json({
             success: true,
             count: alerts.length,
@@ -526,8 +547,13 @@ router.get('/alerts/device/:deviceId', async (req, res) => {
 
         const deviceCoords = device.lastLocation?.coordinates; // [lng, lat]
 
-        // Fetch all recent alerts
-        const allAlerts = await Alert.find().sort({ createdAt: -1 }).limit(100);
+        // Fetch all recent alerts (exclude expired ones — expired alerts never reach users)
+        const allAlerts = await Alert.find({
+            $or: [
+                { expiresAt: null },
+                { expiresAt: { $gt: new Date() } },
+            ]
+        }).sort({ createdAt: -1 }).limit(100);
 
         // Filter: include global alerts + geofenced alerts where device is in range
         const relevantAlerts = allAlerts.filter(alert => {

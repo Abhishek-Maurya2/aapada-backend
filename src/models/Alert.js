@@ -14,6 +14,27 @@ const alertSchema = new mongoose.Schema({
         enum: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'],
         default: 'MEDIUM',
     },
+    alertType: {
+        type: String,
+        enum: [
+            'Earthquake', 'Flood', 'Cyclone', 'Tsunami', 'Landslide',
+            'Fire', 'Industrial Accident', 'Heatwave', 'Thunderstorm', 'Other'
+        ],
+        default: 'Other',
+    },
+    flag: {
+        type: String,
+        enum: ['RED', 'ORANGE', 'YELLOW', 'GREEN'],
+        default: 'YELLOW',
+    },
+    expiresAt: {
+        type: Date,
+        default: null,
+    },
+    additionalInfo: {
+        type: String,
+        default: '',
+    },
     targetRegion: {
         type: {
             type: String, // Can be "ALL" or "Point"

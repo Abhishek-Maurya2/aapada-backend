@@ -18,7 +18,8 @@ export default function AlertList() {
 
     const fetchAlerts = async () => {
         try {
-            const response = await api.get('/alerts');
+            // Fetch all alerts including expired for history
+            const response = await api.get('/alerts?includeExpired=true');
             if (response.data.success) {
                 // Fetch feedback for each alert
                 const alertsWithFeedback = await Promise.all(
@@ -81,6 +82,21 @@ export default function AlertList() {
         return map[status] || 'outline';
     };
 
+    const isExpired = (expiresAt) => {
+        if (!expiresAt) return false;
+        return new Date(expiresAt) < new Date();
+    };
+
+    const getFlagColor = (flag) => {
+        const map = {
+            RED: 'bg-red-500',
+            ORANGE: 'bg-orange-500',
+            YELLOW: 'bg-yellow-500',
+            GREEN: 'bg-green-500'
+        };
+        return map[flag] || 'bg-gray-500';
+    };
+
     if (loading) {
         return <div className="flex h-full items-center justify-center">Loading alerts...</div>;
     }
@@ -127,8 +143,17 @@ export default function AlertList() {
                                 {alerts.map((alert) => (
                                     <TableRow key={alert._id}>
                                         <TableCell className="font-medium">
-                                            <div>{alert.title}</div>
-                                            <div className="text-xs text-muted-foreground truncate max-w-[200px]">{alert.message}</div>
+                                            <div className="flex items-center gap-2">
+                                                <div className={`w-3 h-3 rounded-full ${getFlagColor(alert.flag)}`} title={`Flag: ${alert.flag}`} />
+                                                <span>{alert.title}</span>
+                                                {isExpired(alert.expiresAt) && (
+                                                    <Badge variant="outline" className="text-[10px] text-red-500 border-red-500 uppercase h-5">Expired</Badge>
+                                                )}
+                                            </div>
+                                            <div className="text-xs text-muted-foreground truncate max-w-[200px] flex items-center gap-1">
+                                                <span className="font-semibold px-1 py-0.5 bg-accent rounded text-[10px]">{alert.alertType}</span>
+                                                {alert.message}
+                                            </div>
                                         </TableCell>
                                         <TableCell>
                                             {typeof alert.targetRegion === 'object' && alert.targetRegion?.type === 'Point' ? (
