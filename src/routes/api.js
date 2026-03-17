@@ -1,13 +1,241 @@
 const express = require('express');
 const router = express.Router();
+const bcrypt = require('bcryptjs');
 const Device = require('../models/Device');
+const User = require('../models/User');
 const Alert = require('../models/Alert');
 const Feedback = require('../models/Feedback');
 const { addAlertToQueue, alertQueue, getQueueStatus } = require('../services/queue');
 
+const toUserResponse = (userDoc) => ({
+    id: userDoc._id,
+    name: userDoc.name,
+    email: userDoc.email,
+    phone: userDoc.phone || '',
+    profilePhoto: userDoc.profilePhoto || null,
+});
+
+const toDeviceLocation = (location) => {
+    if (!location || !location.type || !Array.isArray(location.coordinates)) {
+        return undefined;
+    }
+
+    return {
+        type: 'Point',
+        coordinates: location.coordinates,
+    };
+};
+
 // Health check
 router.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date() });
+});
+
+// ============== AUTH ROUTES ==============
+
+/**
+ * Sign up a user and bind current device
+ * POST /api/v1/auth/signup
+ */
+router.post('/auth/signup', async (req, res) => {
+    try {
+        const {
+            name,
+            email,
+            password,
+            phone,
+            profilePhoto,
+            deviceId,
+            fcmToken,
+            platform,
+            location,
+        } = req.body;
+
+        if (!name || !email || !password || !deviceId || !fcmToken) {
+            return res.status(400).json({
+                success: false,
+                message: 'name, email, password, deviceId and fcmToken are required',
+            });
+        }
+
+        const normalizedEmail = email.trim().toLowerCase();
+        const existingUser = await User.findOne({ email: normalizedEmail });
+        if (existingUser) {
+            return res.status(409).json({
+                success: false,
+                message: 'User already exists with this email',
+            });
+        }
+
+        const passwordHash = await bcrypt.hash(password, 10);
+        const user = await User.create({
+            name: name.trim(),
+            email: normalizedEmail,
+            passwordHash,
+            phone: phone || '',
+            profilePhoto: profilePhoto || null,
+            lastLoginAt: new Date(),
+        });
+
+        const updateData = {
+            deviceId,
+            fcmToken,
+            platform: platform || 'android',
+            active: true,
+            userId: user._id,
+        };
+
+        const normalizedLocation = toDeviceLocation(location);
+        if (normalizedLocation) updateData.lastLocation = normalizedLocation;
+
+        const device = await Device.findOneAndUpdate(
+            { deviceId },
+            updateData,
+            { upsert: true, new: true }
+        );
+
+        res.status(201).json({
+            success: true,
+            message: 'Signup successful',
+            data: {
+                user: toUserResponse(user),
+                device: {
+                    deviceId: device.deviceId,
+                    platform: device.platform,
+                },
+            },
+        });
+    } catch (error) {
+        console.error('Signup error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to sign up',
+            error: error.message,
+        });
+    }
+});
+
+/**
+ * Login user and bind current device
+ * POST /api/v1/auth/login
+ */
+router.post('/auth/login', async (req, res) => {
+    try {
+        const { email, password, deviceId, fcmToken, platform, location } = req.body;
+
+        if (!email || !password || !deviceId || !fcmToken) {
+            return res.status(400).json({
+                success: false,
+                message: 'email, password, deviceId and fcmToken are required',
+            });
+        }
+
+        const normalizedEmail = email.trim().toLowerCase();
+        const user = await User.findOne({ email: normalizedEmail });
+
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid email or password',
+            });
+        }
+
+        const validPassword = await bcrypt.compare(password, user.passwordHash);
+        if (!validPassword) {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid email or password',
+            });
+        }
+
+        user.lastLoginAt = new Date();
+        await user.save();
+
+        const updateData = {
+            deviceId,
+            fcmToken,
+            platform: platform || 'android',
+            active: true,
+            userId: user._id,
+        };
+
+        const normalizedLocation = toDeviceLocation(location);
+        if (normalizedLocation) updateData.lastLocation = normalizedLocation;
+
+        const device = await Device.findOneAndUpdate(
+            { deviceId },
+            updateData,
+            { upsert: true, new: true }
+        );
+
+        res.json({
+            success: true,
+            message: 'Login successful',
+            data: {
+                user: toUserResponse(user),
+                device: {
+                    deviceId: device.deviceId,
+                    platform: device.platform,
+                },
+            },
+        });
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to log in',
+            error: error.message,
+        });
+    }
+});
+
+/**
+ * Update user profile
+ * PUT /api/v1/users/:userId/profile
+ */
+router.put('/users/:userId/profile', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { name, email, phone, profilePhoto } = req.body;
+
+        const updateData = {};
+        if (name !== undefined) updateData.name = name;
+        if (phone !== undefined) updateData.phone = phone;
+        if (profilePhoto !== undefined) updateData.profilePhoto = profilePhoto;
+
+        if (email !== undefined) {
+            const normalizedEmail = email.trim().toLowerCase();
+            const emailOwner = await User.findOne({ email: normalizedEmail, _id: { $ne: userId } });
+            if (emailOwner) {
+                return res.status(409).json({
+                    success: false,
+                    message: 'Email already in use',
+                });
+            }
+            updateData.email = normalizedEmail;
+        }
+
+        const user = await User.findByIdAndUpdate(userId, updateData, { new: true });
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found',
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Profile updated successfully',
+            data: toUserResponse(user),
+        });
+    } catch (error) {
+        console.error('User profile update error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update profile',
+            error: error.message,
+        });
+    }
 });
 
 // ============== DEVICE ROUTES ==============
@@ -21,18 +249,7 @@ router.put('/devices/:deviceId/profile', async (req, res) => {
         const { deviceId } = req.params;
         const { name, email, phone, profilePhoto } = req.body;
 
-        const updateData = {};
-        if (name !== undefined) updateData.name = name;
-        if (email !== undefined) updateData.email = email;
-        if (phone !== undefined) updateData.phone = phone;
-        if (profilePhoto !== undefined) updateData.profilePhoto = profilePhoto;
-
-        const device = await Device.findOneAndUpdate(
-            { deviceId },
-            updateData,
-            { new: true }
-        );
-
+        const device = await Device.findOne({ deviceId });
         if (!device) {
             return res.status(404).json({
                 success: false,
@@ -40,10 +257,47 @@ router.put('/devices/:deviceId/profile', async (req, res) => {
             });
         }
 
+        if (!device.userId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Device is not linked to any user',
+            });
+        }
+
+        const updateData = {};
+        if (name !== undefined) updateData.name = name;
+        if (phone !== undefined) updateData.phone = phone;
+        if (profilePhoto !== undefined) updateData.profilePhoto = profilePhoto;
+
+        if (email !== undefined) {
+            const normalizedEmail = email.trim().toLowerCase();
+            const emailOwner = await User.findOne({ email: normalizedEmail, _id: { $ne: device.userId } });
+            if (emailOwner) {
+                return res.status(409).json({
+                    success: false,
+                    message: 'Email already in use',
+                });
+            }
+            updateData.email = normalizedEmail;
+        }
+
+        const user = await User.findByIdAndUpdate(
+            device.userId,
+            updateData,
+            { new: true }
+        );
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found',
+            });
+        }
+
         res.json({
             success: true,
             message: 'Profile updated successfully',
-            data: device,
+            data: toUserResponse(user),
         });
     } catch (error) {
         console.error('Profile update error:', error);
@@ -61,7 +315,7 @@ router.put('/devices/:deviceId/profile', async (req, res) => {
  */
 router.post('/devices/register', async (req, res) => {
     try {
-        const { deviceId, fcmToken, platform, location, name, email, phone, profilePhoto } = req.body;
+        const { deviceId, fcmToken, platform, location, userId } = req.body;
 
         if (!deviceId || !fcmToken) {
             return res.status(400).json({
@@ -78,11 +332,9 @@ router.post('/devices/register', async (req, res) => {
             active: true,
         };
 
-        if (location) updateData.lastLocation = location;
-        if (name !== undefined) updateData.name = name;
-        if (email !== undefined) updateData.email = email;
-        if (phone !== undefined) updateData.phone = phone;
-        if (profilePhoto !== undefined) updateData.profilePhoto = profilePhoto;
+        const normalizedLocation = toDeviceLocation(location);
+        if (normalizedLocation) updateData.lastLocation = normalizedLocation;
+        if (userId) updateData.userId = userId;
 
         // Upsert device (update if exists, create if not)
         const device = await Device.findOneAndUpdate(

@@ -31,20 +31,11 @@ const deviceSchema = new mongoose.Schema({
         type: Boolean,
         default: true,
     },
-    name: {
-        type: String,
-        trim: true,
-    },
-    email: {
-        type: String,
-        trim: true,
-    },
-    phone: {
-        type: String,
-        trim: true,
-    },
-    profilePhoto: {
-        type: String, // Can store base64 or URL
+    userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null,
+        index: true,
     },
 }, { timestamps: true });
 

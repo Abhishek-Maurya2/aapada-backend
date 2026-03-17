@@ -24,10 +24,6 @@ alertQueue.on('failed', (job, err) => {
     console.error(`Job ${job?.id} failed with error:`, err.message);
 });
 
-alertQueue.on('error', (err) => {
-    console.error('Queue error:', err);
-});
-
 console.log('Alert worker started and listening for jobs...');
 
 module.exports = alertQueue;

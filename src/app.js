@@ -29,6 +29,13 @@ app.get('/', (req, res) => {
         version: '1.0.0',
         endpoints: {
             health: 'GET /api/v1/health',
+            auth: {
+                signup: 'POST /api/v1/auth/signup',
+                login: 'POST /api/v1/auth/login',
+            },
+            users: {
+                updateProfile: 'PUT /api/v1/users/:userId/profile',
+            },
             devices: {
                 register: 'POST /api/v1/devices/register',
                 list: 'GET /api/v1/devices',

@@ -1,4 +1,5 @@
 const Queue = require('bull');
+const Redis = require('ioredis');
 
 // Determine Redis connection
 const redisConfig = process.env.REDIS_URL
@@ -11,12 +12,33 @@ const redisConfig = process.env.REDIS_URL
 let alertQueue = null;
 let queueReady = false;
 
+function buildRedisClient() {
+    if (typeof redisConfig === 'string') {
+        return new Redis(redisConfig, {
+            maxRetriesPerRequest: null,
+            connectTimeout: 15000,
+            enableReadyCheck: false,
+            retryStrategy: (times) => Math.min(times * 500, 5000),
+            tls: redisConfig.startsWith('rediss://') ? {} : undefined,
+        });
+    }
+
+    return new Redis({
+        ...redisConfig,
+        maxRetriesPerRequest: null,
+        connectTimeout: 15000,
+        enableReadyCheck: false,
+        retryStrategy: (times) => Math.min(times * 500, 5000),
+    });
+}
+
 // Lazy init: only create the queue when needed
 function getQueue() {
     if (alertQueue) return alertQueue;
 
     try {
-        alertQueue = new Queue('alert-queue', redisConfig, {
+        alertQueue = new Queue('alert-queue', {
+            createClient: () => buildRedisClient(),
             defaultJobOptions: {
                 attempts: 3,
                 backoff: { type: 'exponential', delay: 1000 },
