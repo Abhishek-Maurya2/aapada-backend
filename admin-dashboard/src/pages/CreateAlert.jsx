@@ -64,7 +64,8 @@ export default function CreateAlert() {
         targetRegion: '',
         latitude: '',
         longitude: '',
-        radius: ''
+        radius: '',
+        isManualTitle: false
     });
     const [useGeofence, setUseGeofence] = useState(true);
     const [loading, setLoading] = useState(false);
@@ -72,14 +73,19 @@ export default function CreateAlert() {
     const [success, setSuccess] = useState(false);
 
     const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+        const { name, value } = e.target;
+        setFormData(prev => ({ 
+            ...prev, 
+            [name]: value,
+            isManualTitle: name === 'title' ? true : prev.isManualTitle
+        }));
     };
 
     const handleAlertTypeSelect = (type) => {
         setFormData(prev => ({
             ...prev,
             alertType: type.value,
-            title: prev.title || `${type.value} RED ALERT`,
+            title: prev.isManualTitle ? prev.title : `${type.value.toUpperCase()} ${prev.flag} ALERT`,
         }));
     };
 
@@ -257,7 +263,12 @@ export default function CreateAlert() {
                                         <button
                                             key={f.value}
                                             type="button"
-                                            onClick={() => setFormData(prev => ({ ...prev, flag: f.value, severity: f.value === 'RED' ? 'CRITICAL' : f.value === 'ORANGE' ? 'HIGH' : f.value === 'YELLOW' ? 'MEDIUM' : 'LOW' }))}
+                                            onClick={() => setFormData(prev => ({ 
+                                                ...prev, 
+                                                flag: f.value, 
+                                                title: prev.isManualTitle ? prev.title : (prev.alertType ? `${prev.alertType.toUpperCase()} ${f.value} ALERT` : prev.title),
+                                                severity: f.value === 'RED' ? 'CRITICAL' : f.value === 'ORANGE' ? 'HIGH' : f.value === 'YELLOW' ? 'MEDIUM' : 'LOW' 
+                                            }))}
                                             className={cn(
                                               "flex flex-col items-start p-3 rounded-xl border-2 transition-all duration-300 gap-1 text-left relative overflow-hidden group",
                                               formData.flag === f.value
