@@ -14,7 +14,7 @@ const feedbackSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['RECEIVED', 'ACKNOWLEDGED', 'FAILED'],
+        enum: ['RECEIVED', 'ACKNOWLEDGED', 'FAILED', 'SAFE', 'HELP', 'MEDICAL', 'FIRE', 'SHELTER'],
         default: 'RECEIVED',
     },
     receivedAt: {

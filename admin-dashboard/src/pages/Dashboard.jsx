@@ -18,7 +18,14 @@ import {
   ShieldAlert,
   Zap,
   TrendingUp,
-  ArrowRight
+  ArrowRight,
+  User,
+  Phone,
+  Mail,
+  ExternalLink,
+  Flame,
+  Stethoscope,
+  LifeBuoy
 } from "lucide-react";
 import { MapContainer, TileLayer, Marker, Circle, Popup } from 'react-leaflet';
 import L from 'leaflet';
@@ -71,6 +78,7 @@ export default function Dashboard() {
         queueStatus: { waiting: 0, active: 0, completed: 0, failed: 0 }
     });
     const [alertsData, setAlertsData] = useState([]);
+    const [emergencyResponses, setEmergencyResponses] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -106,6 +114,12 @@ export default function Dashboard() {
                 a => a.targetRegion && a.targetRegion.type === 'Point' && a.targetRegion.coordinates?.length === 2
             );
             setAlertsData(geoAlerts);
+
+            // Fetch emergency responses
+            const emergencyResult = await api.get('/emergency-responses');
+            if (emergencyResult.data.success) {
+                setEmergencyResponses(emergencyResult.data.data);
+            }
         } catch (err) {
             console.error('Failed to fetch stats:', err);
         } finally {
@@ -123,25 +137,86 @@ export default function Dashboard() {
     }
 
     return (
-        <div className="flex-1 space-y-8 p-8 max-w-7xl mx-auto">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-4xl font-black tracking-tighter text-white">COMMAND CENTER</h2>
-                  <p className="text-muted-foreground font-medium flex items-center gap-2 mt-1">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-                    </span>
-                    Real-time alert monitoring & system overview
-                  </p>
-                </div>
-                <Button asChild size="lg" className="rounded-xl glow-primary font-bold px-6 border-0">
-                    <Link to="/create-alert" className="flex items-center gap-2">
-                        <Plus className="h-5 w-5" />
-                        DEPLOY ALERT
-                    </Link>
-                </Button>
             </div>
+
+            {/* Emergency Responses Section */}
+            {emergencyResponses.length > 0 && (
+                <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                        <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]"></div>
+                        <h3 className="text-xl font-black tracking-tight text-red-500 uppercase">Active Resource Requests</h3>
+                    </div>
+                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                        {emergencyResponses.map((response) => (
+                            <Card key={response.id} className="glass border-red-500/20 bg-red-500/5 relative overflow-hidden group hover:border-red-500/40 transition-all duration-300">
+                                <div className="absolute top-0 right-0 p-3">
+                                    <Badge className={cn(
+                                        "font-bold border-0",
+                                        response.status === 'MEDICAL' ? "bg-red-600 text-white" : 
+                                        response.status === 'HELP' ? "bg-orange-600 text-white" : 
+                                        response.status === 'FIRE' ? "bg-red-800 text-white" : "bg-blue-600 text-white"
+                                    )}>
+                                        {response.status}
+                                    </Badge>
+                                </div>
+                                <CardHeader className="pb-2">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10 overflow-hidden">
+                                            {response.user?.profilePhoto ? (
+                                                <img src={response.user.profilePhoto} alt="" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <User className="h-5 w-5 text-muted-foreground" />
+                                            )}
+                                        </div>
+                                        <div>
+                                            <CardTitle className="text-sm font-bold text-white">
+                                                {response.user?.name || 'Anonymous User'}
+                                            </CardTitle>
+                                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                                                {response.alertTitle || 'Global Alert Response'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2 text-xs text-muted-foreground group-hover:text-white/70 transition-colors">
+                                            <Phone className="h-3.5 w-3.5 text-primary" />
+                                            <span className="font-medium">{response.user?.phone || 'No phone provided'}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-xs text-muted-foreground group-hover:text-white/70 transition-colors">
+                                            <Mail className="h-3.5 w-3.5 text-primary" />
+                                            <span className="font-medium truncate">{response.user?.email || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-xs text-muted-foreground group-hover:text-white/70 transition-colors">
+                                            <Clock className="h-3.5 w-3.5 text-primary" />
+                                            <span className="font-medium">
+                                                {new Date(response.receivedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {response.location && (
+                                        <div className="pt-2 border-t border-white/5">
+                                            <Button 
+                                                variant="outline" 
+                                                size="sm" 
+                                                className="w-full rounded-lg h-9 bg-white/5 border-white/10 hover:bg-white/10 text-[11px] font-bold gap-2"
+                                                onClick={() => window.open(`https://www.google.com/maps?q=${response.location.coordinates[1]},${response.location.coordinates[0]}`, '_blank')}
+                                            >
+                                                <MapPin className="h-3.5 w-3.5 text-red-500" />
+                                                VIEW REALTIME LOCATION
+                                                <ExternalLink className="h-3 w-3 ml-auto opacity-50" />
+                                            </Button>
+                                        </div>
+                                    )}
+                                </CardContent>
+                                <div className="absolute bottom-0 left-0 w-full h-1 bg-red-500/20 group-hover:bg-red-500/50 transition-colors"></div>
+                            </Card>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
                 <StatCard 

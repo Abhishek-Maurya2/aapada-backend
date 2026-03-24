@@ -636,6 +636,61 @@ router.get('/alerts/:id/feedback', async (req, res) => {
     }
 });
 
+/**
+ * Get all emergency responses (MEDICAL, HELP, etc.) with user and device info
+ * GET /api/v1/emergency-responses
+ */
+router.get('/emergency-responses', async (req, res) => {
+    try {
+        // Find feedbacks that are emergency-related (MEDICAL, HELP, etc.)
+        // Excluding SAFE and generic ACKNOWLEDGED/RECEIVED if needed, 
+        // but user asked for "medical/sos help", so let's filter specifically for high-priority ones.
+        const emergencies = await Feedback.find({
+            status: { $in: ['MEDICAL', 'HELP', 'FIRE', 'SHELTER'] }
+        }).sort({ receivedAt: -1 });
+
+        const results = await Promise.all(emergencies.map(async (f) => {
+            const device = await Device.findOne({ deviceId: f.deviceId });
+            let user = null;
+            if (device && device.userId) {
+                user = await User.findById(device.userId);
+            }
+
+            const alert = await Alert.findById(f.alertId);
+
+            return {
+                id: f._id,
+                alertId: f.alertId,
+                alertTitle: alert?.title || 'Unknown Alert',
+                status: f.status,
+                receivedAt: f.receivedAt,
+                metadata: f.metadata,
+                deviceId: f.deviceId,
+                location: device?.lastLocation || null,
+                user: user ? {
+                    id: user._id,
+                    name: user.name,
+                    email: user.email,
+                    phone: user.phone
+                } : null
+            };
+        }));
+
+        res.json({
+            success: true,
+            count: results.length,
+            data: results
+        });
+    } catch (error) {
+        console.error('Emergency responses error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch emergency responses',
+            error: error.message
+        });
+    }
+});
+
 // ============== QUEUE STATUS ROUTE ==============
 
 /**
