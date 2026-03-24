@@ -1,47 +1,70 @@
-import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, AlertTriangle, List } from 'lucide-react';
-import { cn } from "@/lib/utils";
+import { Link, useLocation } from 'react-router-dom';
+import { 
+  LayoutDashboard, 
+  BellRing, 
+  Settings, 
+  ShieldAlert,
+  LogOut,
+  ChevronRight
+} from 'lucide-react';
+import { cn } from '../lib/utils';
 
-export default function Sidebar() {
-    return (
-        <aside className="w-64 min-h-screen bg-card border-r border-border flex flex-col">
-            <div className="p-6 border-b border-border">
-                <h2 className="text-2xl font-bold tracking-tight">Aapada</h2>
-                <span className="text-sm text-muted-foreground">Admin Panel</span>
-            </div>
-            <nav className="flex-1 p-4 space-y-2">
-                <NavLink
-                    to="/"
-                    className={({ isActive }) => cn(
-                        "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
-                        isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground"
-                    )}
-                    end
-                >
-                    <LayoutDashboard className="h-4 w-4" />
-                    Dashboard
-                </NavLink>
-                <NavLink
-                    to="/create-alert"
-                    className={({ isActive }) => cn(
-                        "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
-                        isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground"
-                    )}
-                >
-                    <AlertTriangle className="h-4 w-4" />
-                    Create Alert
-                </NavLink>
-                <NavLink
-                    to="/alerts"
-                    className={({ isActive }) => cn(
-                        "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
-                        isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground"
-                    )}
-                >
-                    <List className="h-4 w-4" />
-                    All Alerts
-                </NavLink>
-            </nav>
-        </aside>
-    );
-}
+const Sidebar = () => {
+  const location = useLocation();
+
+  const navItems = [
+    { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+    { icon: BellRing, label: 'Create Alert', path: '/create-alert' },
+    { icon: ShieldAlert, label: 'All Alerts', path: '/alerts' },
+  ];
+
+  return (
+    <aside className="w-64 glass-dark h-screen border-r border-white/10 flex flex-col p-4">
+      <div className="flex items-center gap-3 px-2 py-6 mb-8">
+        <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center glow-primary">
+          <ShieldAlert className="text-white w-6 h-6" />
+        </div>
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-white">AAPADA</h1>
+          <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-semibold">Admin Panel</p>
+        </div>
+      </div>
+
+      <nav className="flex-1 space-y-2">
+        {navItems.map((item) => {
+          const isActive = location.pathname === item.path;
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={cn(
+                "flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-300 group",
+                isActive 
+                  ? "bg-primary/10 text-primary border border-primary/20" 
+                  : "text-muted-foreground hover:bg-white/5 hover:text-white"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <item.icon className={cn(
+                  "w-5 h-5 transition-transform duration-300 group-hover:scale-110",
+                  isActive ? "text-primary" : "text-muted-foreground"
+                )} />
+                <span className="font-medium">{item.label}</span>
+              </div>
+              {isActive && <ChevronRight className="w-4 h-4" />}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="mt-auto pt-6 border-t border-white/5">
+        <button className="flex items-center gap-3 px-4 py-3 w-full text-muted-foreground hover:text-red-400 hover:bg-red-400/5 rounded-xl transition-all">
+          <LogOut className="w-5 h-5" />
+          <span className="font-medium">Logout</span>
+        </button>
+      </div>
+    </aside>
+  );
+};
+
+export default Sidebar;
