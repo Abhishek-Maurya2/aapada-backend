@@ -71,7 +71,7 @@ This project is configured to run on Netlify Functions.
 
 ### Requirements
 - **MONGODB_URI**: Setting this environment variable in the Netlify Dashboard is mandatory.
-- **Background Workers**: BullMQ and Redis-related background tasks won't run continuously on Netlify. A persistent server or a cloud-based Redis/worker setup is required for that part.
+- **Background Workers**: BullMQ and Redis-related background tasks won't run continuously on Netlify. A persistent server or a cloud-based Redis/worker setup is required for that part
 
 
 ### Steps to Deploy
